@@ -18,5 +18,9 @@ class TokenExpired(GoofishError):
     """mtop token 过期，通常刷新页面即可自愈。"""
 
 
+class SessionStale(GoofishError):
+    """页面会话卡死（典型表现：接口一直 TIMEOUT），需要重建浏览器上下文。"""
+
+
 class ApiError(GoofishError):
     """业务错误（参数不对、商品下架等），重试没有意义。"""

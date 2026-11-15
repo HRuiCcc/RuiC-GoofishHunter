@@ -21,6 +21,7 @@ from hunter.goofish.errors import (
     ApiError,
     LoginRequired,
     RiskControl,
+    SessionStale,
     TokenExpired,
 )
 
@@ -86,6 +87,8 @@ def classify(result: dict) -> None:
         return
     if any(marker in text for marker in RISK_MARKERS):
         raise RiskControl(text)
+    if "TIMEOUT::" in text or "接口超时" in text:
+        raise SessionStale(text)
     if any(marker in text for marker in TOKEN_MARKERS):
         raise TokenExpired(text)
     if "FAIL_SYS_" in text or "FAIL_BIZ_" in text:
@@ -171,8 +174,20 @@ class BrowserHub:
                 pass
 
         self._contexts[account] = ctx
-        self._locks[account] = asyncio.Lock()
+        self._locks.setdefault(account, asyncio.Lock())
         return ctx
+
+    async def restart(self, account: str) -> None:
+        """关掉卡死的上下文，下一次调用会重新拉起浏览器并加载页面。"""
+        ctx = self._contexts.pop(account, None)
+        self._pages.pop(account, None)
+        if ctx is not None:
+            try:
+                await ctx.close()
+            except Exception:  # noqa: BLE001
+                pass
+        self._release_profile_lock(account)
+        print(f"[session] 已重建 {account} 的浏览器会话")
 
     async def page(self, account: str):
         ctx = await self.context(account)
@@ -306,21 +321,28 @@ class BrowserHub:
 
     # ------------------------------------------------------------------ mtop 调用
     async def call(self, account: str, api: str, data: dict, *, retries: int = 1) -> dict:
-        page = await self.page(account)
-        async with self._locks[account]:
-            await self._throttle(account)
-            for attempt in range(retries + 1):
-                try:
+        for attempt in range(retries + 1):
+            try:
+                page = await self.page(account)
+                async with self._locks[account]:
+                    await self._throttle(account)
                     result = await page.evaluate(CALL_JS, {"api": api, "data": data})
-                    classify(result)
-                    return result
-                except TokenExpired:
-                    if attempt >= retries:
-                        raise
-                    await self._refresh_token(account, page)
-                except (ApiError, RiskControl, LoginRequired):
+                classify(result)
+                return result
+            except SessionStale:
+                await self.restart(account)
+                await asyncio.sleep(2.0)
+                if attempt >= retries:
+                    raise RiskControl(
+                        "接口连续超时，已重建浏览器；可能是网关限流，建议冷却 10–20 分钟"
+                    )
+            except TokenExpired:
+                await self._refresh_token(account, page)
+                if attempt >= retries:
                     raise
-            raise ApiError("mtop 调用未返回结果")
+            except (ApiError, RiskControl, LoginRequired):
+                raise
+        raise ApiError("mtop 调用未返回结果")
 
     async def _throttle(self, account: str) -> None:
         last = self._last_call.get(account, 0.0)

@@ -1,6 +1,6 @@
 [project]
 name = "ruic-goofish-hunter"
-version = "0.1.1"
+version = "0.1.2"
 description = "闲鱼猎手：把闲鱼监控做成可解释的捡漏决策"
 requires-python = ">=3.10"
 dependencies = [

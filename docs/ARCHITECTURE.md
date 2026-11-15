@@ -125,6 +125,7 @@ score = 50
 | 登录态过期 | 页面跳 passport | `LoginRequired` → 账号标 `expired` → 界面提示扫码 |
 | 触发验证码 | `RGV587` / `FAIL_SYS_USER_VALIDATE` | `RiskControl` → 停止 + 建议冷却 1–2 小时 |
 | token 过期 | `FAIL_SYS_TOKEN_EXOIRED` | 刷新页面重取 `_m_h5_tk`，重试 1 次 |
+| 接口超时 | `TIMEOUT::接口超时` | 判定会话卡死 → 关闭并重建浏览器上下文 → 重试 1 次；仍失败则冷却 |
 | 业务错误 | `FAIL_BIZ_*` | 记录到 `runs.error`，不重试 |
 | 详情单条失败 | 该商品跳过 | 打 warn，不影响其它商品 |
 | AI 超时/报错 | `llm_json` 里记 error | 采集与规则分不受影响 |
