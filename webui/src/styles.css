@@ -1,0 +1,344 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    background-color: #f7f5f0;
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-paper font-body text-ink antialiased;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.005em;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: #d8432a;
+    color: #fff9f3;
+  }
+
+  :focus-visible {
+    outline: 2px solid #d8432a;
+    outline-offset: 2px;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  button:not(:disabled):active {
+    transform: scale(0.98);
+  }
+
+  select option {
+    background-color: #ffffff;
+    color: #17150f;
+  }
+
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d9d2c5 transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d9d2c5;
+  border: 3px solid #f7f5f0;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.console-scroll {
+  scrollbar-color: #d9d2c5 #f2eee5;
+}
+
+.console-scroll::-webkit-scrollbar-thumb {
+  background: #d9d2c5;
+  border-color: #f2eee5;
+}
+
+@layer components {
+  .surface-card {
+    @apply rounded-[14px] border border-line bg-surface;
+    box-shadow: 0 1px 2px rgba(24, 20, 14, 0.04);
+  }
+
+  .surface-panel {
+    @apply rounded-[14px] border border-line bg-raise;
+    box-shadow: 0 18px 40px -24px rgba(24, 20, 14, 0.25);
+  }
+
+  .field {
+    @apply h-10 w-full rounded-[10px] border border-line bg-[#ffffff] px-3 text-[13px] text-ink outline-none;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  .field::placeholder {
+    color: #a39d92;
+    opacity: 1;
+  }
+
+  .field:hover {
+    border-color: #d5cec1;
+  }
+
+  .field:focus {
+    border-color: #d8432a;
+    box-shadow: 0 0 0 3px rgba(216, 67, 42, 0.16);
+  }
+
+  .field:disabled {
+    opacity: 0.45;
+  }
+
+  .field-area {
+    @apply h-auto min-h-[76px] py-2.5 leading-relaxed;
+  }
+
+  .btn {
+    @apply inline-flex h-10 shrink-0 select-none items-center justify-center gap-1.5 rounded-[10px] border px-4 text-[12.5px] font-medium leading-none;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 120ms ease;
+  }
+
+  .btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .btn:disabled {
+    @apply opacity-40;
+  }
+
+  .btn-primary {
+    @apply border-red bg-red text-[#fff9f3];
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: #c4381f;
+    border-color: #c4381f;
+  }
+
+  .btn-ghost {
+    @apply border-line bg-raise text-ink;
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    background-color: #f3efe7;
+    border-color: #d8d1c4;
+  }
+
+  .btn-quiet {
+    @apply border-transparent bg-transparent text-ink-2;
+  }
+
+  .btn-quiet:hover:not(:disabled) {
+    @apply bg-paper-2 text-ink;
+  }
+
+  .btn-danger {
+    @apply border-line bg-transparent text-red;
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    border-color: rgba(216, 67, 42, 0.55);
+    background-color: rgba(216, 67, 42, 0.08);
+  }
+
+  .btn-sm {
+    @apply h-8 gap-1 px-2.5 text-[11.5px];
+  }
+
+  .iconbtn {
+    @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-transparent text-ink-2;
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+
+  .iconbtn:hover:not(:disabled) {
+    @apply bg-paper-2 text-ink;
+  }
+
+  .iconbtn:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+
+  .seal {
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-red text-[15px] font-semibold text-[#fff9f3];
+  }
+
+  .label-xs {
+    @apply text-[10.5px] tracking-[0.08em] text-muted;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-1 rounded-full border border-line bg-raise px-2 py-0.5 text-[10.5px] text-ink-2;
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  .row-in {
+    animation: fade-up 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .skel {
+    background: linear-gradient(100deg, #ece7dd 20%, #f6f2ea 40%, #ece7dd 60%);
+    background-size: 200% 100%;
+    border-radius: 8px;
+    animation: shimmer 1.3s linear infinite;
+  }
+
+  .drawer-panel {
+    animation: drawer-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .drawer-scrim {
+    animation: scrim-in 180ms ease-out both;
+  }
+
+  .bar-grow {
+    transform-origin: left center;
+    animation: bar-grow 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .toast-item {
+    animation: toast-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .spin {
+    animation: spin 900ms linear infinite;
+  }
+}
+
+@media (min-width: 1024px) {
+  body.drawer-open .toast-host {
+    right: 548px;
+  }
+}
+
+@media (max-width: 1023px) {
+  body.drawer-open .toast-host {
+    right: 12px;
+    bottom: 84px;
+    left: 12px;
+    width: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-in,
+  .skel,
+  .drawer-panel,
+  .drawer-scrim,
+  .bar-grow,
+  .toast-item,
+  .spin {
+    animation: none;
+  }
+
+  .btn:active:not(:disabled),
+  .iconbtn:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -150% 0;
+  }
+}
+
+@keyframes drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,22 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+webui/node_modules/
+webui/dist/
+*.db
+*.db-wal
+*.db-shm
+shots/
+.pytest_cache/
+.env
+
+# 登录态 / 浏览器 profile / 本地数据：绝不入库
+states/
+profiles/
+state/
+*.state.json
+xianyu_state.json
+*.cookies.json
+hunter.db*
+logs/

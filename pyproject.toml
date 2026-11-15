@@ -1,0 +1,28 @@
+[project]
+name = "ruic-goofish-hunter"
+version = "0.1.1"
+description = "闲鱼猎手：把闲鱼监控做成可解释的捡漏决策"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "playwright>=1.48",
+    "httpx>=0.27",
+    "pydantic>=2.8",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
+
+[project.scripts]
+hunter = "hunter.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
