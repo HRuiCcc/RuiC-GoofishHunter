@@ -52,34 +52,42 @@ class Pipeline:
         stats = {"found": 0, "new": 0, "scored": 0, "alerted": 0, "failed_detail": 0}
         BUS.emit("info", f"开始扫描「{watch.name}」：{watch.keyword}", watch=watch.name, run=run_id)
 
+        account = self._account_for(watch)
         try:
-            account = self._account_for(watch)
-            await self.hub.ensure_login(account)
-            api = GoofishAPI(self.hub, account)
+            # 同一个账号的页面只能被一轮扫描使用：否则一轮在导航、另一轮在 evaluate，
+            # 页面会被互相关掉（TargetClosedError）或把网关打成超时。
+            async with self.hub.session_lock(account):
+                await self.hub.ensure_login(account, keyword=watch.keyword)
+                api = GoofishAPI(self.hub, account)
 
-            cards = await self._collect(api, watch)
-            stats["found"] = len(cards)
-            samples, fresh_cards = self._persist(watch, cards)
-            stats["new"] = len(fresh_cards)
-            BUS.emit(
-                "info",
-                f"本轮 {len(cards)} 条，其中新上/降价 {len(fresh_cards)} 条",
-                watch=watch.name,
-            )
+                cards = await self._collect(api, watch)
+                stats["found"] = len(cards)
+                samples, fresh_cards = self._persist(watch, cards)
+                stats["new"] = len(fresh_cards)
+                BUS.emit(
+                    "info",
+                    f"本轮 {len(cards)} 条，其中新上/降价 {len(fresh_cards)} 条",
+                    watch=watch.name,
+                )
 
-            fresh_ids = {card.item_id for card in fresh_cards}
-            scored = await self._score_all(api, watch, cards, fresh_ids, samples)
-            stats["scored"] = len(scored)
+                fresh_ids = {card.item_id for card in fresh_cards}
+                scored = await self._score_all(api, watch, cards, fresh_ids, samples)
+                stats["scored"] = len(scored)
 
-            alerts = await self._notify(watch, scored)
-            stats["alerted"] = len(alerts)
+                alerts = await self._notify(watch, scored)
+                stats["alerted"] = len(alerts)
 
-            account_row = repo.account_get_by_name(account)
-            if account_row:
-                repo.account_set_status(account_row["id"], "ok")
-            repo.run_finish(run_id, status="ok", **stats)
-            BUS.emit("ok", f"「{watch.name}」完成：{len(scored)} 条已评分，{len(alerts)} 条推送", watch=watch.name)
-            return {"run_id": run_id, "status": "ok", **stats}
+                account_row = repo.account_get_by_name(account)
+                if account_row:
+                    repo.account_set_status(account_row["id"], "ok")
+                # 把这一轮刷新过的 token 写回登录态，下次启动优先用新的
+                try:
+                    await self.hub.save_state(account)
+                except Exception:  # noqa: BLE001
+                    pass
+                repo.run_finish(run_id, status="ok", **stats)
+                BUS.emit("ok", f"「{watch.name}」完成：{len(scored)} 条已评分，{len(alerts)} 条推送", watch=watch.name)
+                return {"run_id": run_id, "status": "ok", **stats}
 
         except LoginRequired as exc:
             return self._fail(run_id, watch, "login", f"登录态失效：{exc}", stats)

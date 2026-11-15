@@ -31,14 +31,16 @@ cat > "$PLIST" <<PLIST_EOF
   <key>WorkingDirectory</key><string>$ROOT</string>
   <key>EnvironmentVariables</key>
   <dict>
-    <key>HUNTER_HEADLESS</key><string>false</string>
+    <key>HUNTER_HEADLESS</key><string>true</string>
     <key>HUNTER_QUIET</key><string>1</string>
     <key>HUNTER_DATA_DIR</key><string>$DATA</string>
     <key>PATH</key><string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
   </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
-  <key>ProcessType</key><string>Background</string>
+  <!-- Edge 是 GUI 应用：Background 类型下窗口/渲染进程会被系统限制导致浏览器崩掉，必须 Interactive -->
+  <key>ProcessType</key><string>Interactive</string>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
   <key>StandardOutPath</key><string>$DATA/logs/service.log</string>
   <key>StandardErrorPath</key><string>$DATA/logs/service.err.log</string>
 </dict>
@@ -46,7 +48,30 @@ cat > "$PLIST" <<PLIST_EOF
 PLIST_EOF
 
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
-launchctl bootstrap "gui/$(id -u)" "$PLIST"
+
+# 等旧 job 真正退出；launchd 在过渡态里会以 EIO(5) 拒绝 bootstrap
+for _ in $(seq 1 20); do
+  launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || break
+  sleep 0.5
+done
+
+# 端口不能有两个实例：先停掉本工程手工启动/遗留的 serve 进程
+pkill -f "$ROOT/.venv/bin/python -m hunter serve" 2>/dev/null || true
+sleep 1
+
+loaded=false
+for _ in $(seq 1 5); do
+  if launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null; then
+    loaded=true
+    break
+  fi
+  launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+  sleep 1
+done
+if [ "$loaded" != true ]; then
+  echo "launchd 加载失败，请手动执行：launchctl bootstrap gui/$(id -u) $PLIST"
+  exit 1
+fi
 launchctl kickstart -k "gui/$(id -u)/$LABEL"
 
 PORT="${HUNTER_PORT:-7801}"

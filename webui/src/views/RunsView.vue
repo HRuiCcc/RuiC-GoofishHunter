@@ -6,10 +6,12 @@ import {
   getLogs,
   getRuns,
   getWatches,
+  runWatch,
   type LogEvent,
   type RunRow,
   type Watch,
 } from '../api'
+import { toast } from '../lib/toast'
 import { errorMessage, useAsyncData } from '../lib/useAsync'
 import { useNow } from '../lib/useNow'
 import { fmtDuration, fmtNumber, fmtStamp, statusInfo, timeAgo } from '../lib/format'
@@ -26,6 +28,51 @@ const {
 } = useAsyncData<RunRow[]>(() => getRuns(30))
 const { data: watchList } = useAsyncData<Watch[]>(() => getWatches())
 const now = useNow(1000)
+
+/** 本页的任务选择：下拉选一个关注，点「运行」立刻跑一轮。 */
+const taskList = computed(() => watchList.value ?? [])
+const selectedTaskId = ref<number | ''>('')
+const selectedTask = computed(() => taskList.value.find((watch) => watch.id === selectedTaskId.value) ?? null)
+const startingRun = ref(false)
+const runButtonTitle = computed(() =>
+  selectedTask.value ? `立即运行「${selectedTask.value.name}」` : '还没有关注任务，先去「关注」建一个',
+)
+
+watch(
+  taskList,
+  (list) => {
+    if (list.length === 0) {
+      selectedTaskId.value = ''
+      return
+    }
+    if (list.some((watch) => watch.id === selectedTaskId.value)) return
+    selectedTaskId.value = (list.find((watch) => watch.enabled) ?? list[0]).id
+  },
+  { immediate: true },
+)
+
+async function startSelectedRun(): Promise<void> {
+  const task = selectedTask.value
+  if (!task) {
+    toast.info('还没有关注任务，先去「关注」建一个。')
+    return
+  }
+  if (startingRun.value) return
+  startingRun.value = true
+  try {
+    await runWatch(task.id)
+    toast.success(`「${task.name}」已开始跑，日志会打在最下面的控制台。`)
+    autoScroll.value = true
+    await reloadRuns()
+    window.setTimeout(() => void reloadRuns(), 1500)
+    await nextTick()
+    scrollBottom()
+  } catch (problem) {
+    toast.error(`没跑起来：${errorMessage(problem)}`)
+  } finally {
+    startingRun.value = false
+  }
+}
 
 const logs = ref<LogEvent[]>([])
 const logsLoading = ref(true)
@@ -195,7 +242,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div>
-    <PageHeader title="运行" subtitle="每一轮扫描都记一笔；下面那台控制台是实时日志，断线会自动重连。">
+    <PageHeader title="运行" subtitle="每一轮扫描都记一笔；选一个任务点「运行」就能立刻跑一轮，下面那台控制台会实时打印。">
       <template #actions>
         <button type="button" class="btn btn-ghost" @click="reloadRuns()">
           <Icon name="refresh" :size="13" /> 刷新
@@ -203,6 +250,43 @@ onBeforeUnmount(() => {
         <RouterLink to="/watches" class="btn btn-ghost">
           <Icon name="target" :size="13" /> 去关注
         </RouterLink>
+
+        <div class="flex items-center gap-1.5">
+          <span class="relative flex items-center">
+            <select
+              v-model="selectedTaskId"
+              class="h-10 w-[176px] max-w-[50vw] appearance-none truncate rounded-[10px] border border-line bg-surface pl-3 pr-8 text-[12px] text-ink transition-[border-color,background-color] duration-150 hover:border-[#d6cec0] hover:bg-[#fffdf9] disabled:cursor-not-allowed disabled:text-muted disabled:hover:border-line disabled:hover:bg-surface"
+              :disabled="taskList.length === 0"
+              aria-label="选择要运行的任务"
+            >
+              <option v-if="taskList.length === 0" value="">暂无关注任务</option>
+              <option v-for="task in taskList" :key="task.id" :value="task.id">
+                {{ task.name }}{{ task.enabled ? '' : ' · 已暂停' }}
+              </option>
+            </select>
+            <Icon
+              name="chevronDown"
+              :size="12"
+              class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted"
+            />
+          </span>
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            :disabled="startingRun || !selectedTask"
+            :title="runButtonTitle"
+            :aria-label="runButtonTitle"
+            @click="startSelectedRun"
+          >
+            <Icon
+              :name="startingRun ? 'loader' : 'play'"
+              :size="13"
+              :class="startingRun ? 'animate-spin' : ''"
+            />
+            {{ startingRun ? '正在跑' : '运行' }}
+          </button>
+        </div>
       </template>
     </PageHeader>
 
@@ -237,7 +321,7 @@ onBeforeUnmount(() => {
       <StateBlock
         v-else-if="(runRows ?? []).length === 0"
         title="还没有运行记录"
-        description="去「关注」点「立即运行」，这里会记下每一轮抓到多少、评了多少、推了几条；下面的控制台会同时开始滚动。"
+        description="在右上角选一个任务点「运行」，这里会记下这一轮抓到多少、评了多少、推了几条，下面的控制台会同时开始滚动；还没有任务就先点「去关注」建一个。"
         class="mt-4"
       >
         <RouterLink to="/watches" class="btn btn-primary">

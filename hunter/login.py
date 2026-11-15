@@ -19,7 +19,8 @@ async def interactive_login(
     poll: float = 2.0,
 ) -> dict:
     BUS.emit("info", f"正在打开登录窗口（{account}），请在浏览器里扫码…", account=account)
-    ctx = await hub.context(account, headless=False)
+    # 扫码必须看得见：以可见模式建上下文（如果之前是后台窗口，会自动重建成可见）
+    ctx = await hub.context(account, headless=False, minimized=False)
     page = ctx.pages[0] if ctx.pages else await ctx.new_page()
     try:
         await page.goto(HOME, wait_until="domcontentloaded", timeout=45_000)
@@ -35,6 +36,8 @@ async def interactive_login(
             if (await hub.login_state(account))["logged_in"]:
                 path = await hub.save_state(account)
                 BUS.emit("ok", f"登录成功，登录态已保存到 {path.name}", account=account)
+                # 登完把窗口收进 Dock，回到后台跑
+                await hub.minimize(account)
                 return {"ok": True, "state": str(path)}
         await asyncio.sleep(poll)
         waited += poll

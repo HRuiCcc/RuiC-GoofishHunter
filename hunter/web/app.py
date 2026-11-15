@@ -36,8 +36,15 @@ LOGIN_TASKS: dict[str, asyncio.Task] = {}
 async def lifespan(app: FastAPI):
     init_db()
     PATHS.ensure()
+    interrupted = repo.runs_mark_interrupted()
+    # 上次退出时账号还在风控冷却里：重启后先静默 5 分钟，别一启动就继续撞网关
+    for account in repo.accounts_list():
+        if account.get("status") == "risk":
+            HUB.start_cooldown(account["name"], 300)
     await SCHEDULER.start()
     BUS.emit("info", f"闲鱼猎手启动，数据目录 {PATHS.data}")
+    if interrupted:
+        BUS.emit("warn", f"上次退出时还有 {interrupted} 轮扫描没跑完，已标成中断")
     yield
     await SCHEDULER.stop()
     await HUB.close()
@@ -245,7 +252,9 @@ async def start_login(name: str):
         return {"started": False, "reason": "已有登录窗口在等待"}
 
     async def runner():
-        result = await interactive_login(HUB, name)
+        # 扫码会重建上下文；等正在跑的那轮扫描结束再换，避免页面被互相关掉
+        async with HUB.session_lock(name):
+            result = await interactive_login(HUB, name)
         account = repo.account_get_by_name(name)
         if account:
             repo.account_set_status(account["id"], "ok" if result.get("ok") else "expired",
@@ -293,7 +302,7 @@ async def preview(payload: WatchIn):
         min_price=payload.min_price, max_price=payload.max_price,
     )
     try:
-        await HUB.ensure_login(account)
+        await HUB.ensure_login(account, keyword=payload.keyword)
         cards = await api.search_page(query, 1)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(400, f"试抓失败：{exc}") from exc

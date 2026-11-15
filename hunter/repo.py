@@ -532,6 +532,16 @@ def run_finish(run_id: int, **fields: Any) -> None:
         conn.execute(f"UPDATE runs SET {columns} WHERE id = ?", (*payload.values(), run_id))
 
 
+def runs_mark_interrupted(message: str = "服务重启，这一轮被中断") -> int:
+    """进程退出时没跑完的那一轮，别让它永远停在「进行中」。"""
+    with db() as conn:
+        cursor = conn.execute(
+            "UPDATE runs SET status = 'error', error = ?, finished_at = ? WHERE status = 'running'",
+            (message, now_iso()),
+        )
+        return int(cursor.rowcount)
+
+
 def runs_list(limit: int = 30) -> list[dict]:
     with db() as conn:
         rows = conn.execute(

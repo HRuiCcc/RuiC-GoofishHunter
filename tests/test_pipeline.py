@@ -12,7 +12,11 @@ class FakeHub:
     def __init__(self):
         self.calls = 0
 
-    async def ensure_login(self, account):
+    def session_lock(self, account):
+        import asyncio
+        return asyncio.Lock()
+
+    async def ensure_login(self, account, keyword=None):
         self.calls += 1
 
     async def close(self, account=None):
@@ -95,7 +99,7 @@ def test_pipeline_marks_login_failure(fresh_db, monkeypatch):
     watch = repo.watch_create(Watch(name="vivo", keyword="vivo x200 pro"))
 
     class ExpiredHub(FakeHub):
-        async def ensure_login(self, account):
+        async def ensure_login(self, account, keyword=None):
             from hunter.goofish.errors import LoginRequired
 
             raise LoginRequired("cookies expired")

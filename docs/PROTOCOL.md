@@ -93,8 +93,9 @@
 
 1. **裸 HTTP 直连会被拦**：带 cookie 手算 `sign` 直接 POST，返回 `RGV587_ERROR::SM`。
    必须借页面里的 `window.lib.mtop.request`，它自带签名与安全头。
-2. **无头 + 默认 UA 会被挂起**：`headless=True` 且 UA 含 `HeadlessChrome/HeadlessEdg` 时，
-   搜索稳定返回 `TIMEOUT::接口超时`；把 UA 换成真实 Chrome UA 后无头正常 `SUCCESS`。
+2. **无头要「预热」**：无头上下文里直接调 `lib.mtop.request` 会被挂起，稳定返回
+   `TIMEOUT::接口超时`。先让页面自己导航到 `/search?q=…` 并发起一次搜索，之后再直调就正常；
+   同时上下文要用移动端 UA + `is_mobile`/`has_touch`，桌面 UA 的登录页会判「非法访问」。
 3. **`type` 必须小写 `post`**：传 `POST` / `ORIGINALJSON` 会得到 `UNEXCEPT_REQUEST::错误的请求类型`。
 
 ## 7. 调用姿势

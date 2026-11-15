@@ -20,9 +20,15 @@
 | 页面内 `lib.mtop.request`，type 大写 `POST`/`ORIGINALJSON` | `UNEXCEPT_REQUEST::错误的请求类型` |
 | 页面内 `lib.mtop.request`，type 小写 `post`，有头 | `SUCCESS::调用成功`，30 条 |
 | 页面内 `lib.mtop.request`，无头 + Playwright 默认 UA | `TIMEOUT::接口超时`（稳定复现） |
-| 页面内 `lib.mtop.request`，无头 + 真实 Chrome UA | `SUCCESS::调用成功`，30 条 |
+| 页面内 `lib.mtop.request`，无头 + 移动 UA（冷启动直调） | `TIMEOUT::接口超时`（稳定复现） |
+| 无头 + 移动仿真，导航 `/search?q=…` 由页面自己发搜索 | `SUCCESS::调用成功`，30 条 / 页 |
+| 上一步预热后，同页面内直调搜索（带筛选、分页） | `SUCCESS::调用成功`，30 条 / 页 |
+| 预热后直调详情 / 卖家主页 | `SUCCESS::调用成功` |
 
-→ 最终方案：无头浏览器 + 真实 UA + 页面内 mtop。
+| 无头 + 移动仿真，页面驱动搜索 + 点「个人闲置/包邮」+ 点翻页 | `SUCCESS`，两页各 30 条 |
+| 无头 + 移动仿真，为单件商品开临时详情页并拦截详情响应 | `SUCCESS`，50/50 件拿到详情 |
+
+→ 最终方案：无头浏览器 + 移动端仿真 + **页面驱动搜索/详情 + 拦截响应**；直调仅兜底。
 
 ## 3. 真实抓取与评分
 

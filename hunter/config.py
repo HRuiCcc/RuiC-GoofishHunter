@@ -60,6 +60,8 @@ class Runtime:
     host: str
     port: int
     headless: bool
+    # 抓取时把浏览器窗口最小化到 Dock（后台跑，不挡屏幕）；登录扫码时临时可见
+    minimize_browser: bool
     browser_channel: str
     # 每次 mtop 调用之间的最小间隔（秒），用于自保，不是给别人看的
     call_interval: float
@@ -71,6 +73,8 @@ class Runtime:
     detail_ttl_hours: int
     # 代理：留空 = 直连（绕过系统代理）
     proxy: str
+    # 命中风控后静默冷却多久（秒），期间不再打网关
+    cooldown_sec: int
 
     @classmethod
     def load(cls) -> "Runtime":
@@ -78,14 +82,18 @@ class Runtime:
         return cls(
             host=os.getenv("HUNTER_HOST", "127.0.0.1"),
             port=_env_int("HUNTER_PORT", 7801),
-            # 当前网关会拦截无头浏览器（实测多引擎/多指纹均超时），默认有头
-            headless=_env_bool("HUNTER_HEADLESS", False),
+            # 无头是默认：配合移动端仿真 + 页面自带请求预热，不需要任何可见窗口。
+            # （网关头一次会以 TIMEOUT 拒绝冷启动的 mtop 直调，预热一次后放行，见 session.py）
+            headless=_env_bool("HUNTER_HEADLESS", True),
+            # 有头模式下把窗口最小化，抓取在后台进行、不抢占屏幕
+            minimize_browser=_env_bool("HUNTER_MINIMIZE", True),
             browser_channel=channel,
             call_interval=float(os.getenv("HUNTER_CALL_INTERVAL", "0.35")),
             detail_concurrency=max(1, _env_int("HUNTER_DETAIL_CONCURRENCY", 3)),
             default_interval_sec=max(60, _env_int("HUNTER_DEFAULT_INTERVAL", 300)),
             detail_ttl_hours=max(1, _env_int("HUNTER_DETAIL_TTL_HOURS", 6)),
             proxy=os.getenv("HUNTER_PROXY", "").strip(),
+            cooldown_sec=max(60, _env_int("HUNTER_COOLDOWN", 900)),
         )
 
 
