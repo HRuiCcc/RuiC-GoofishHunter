@@ -92,10 +92,10 @@
 ## 6. 三条硬约束（实测）
 
 1. **裸 HTTP 直连会被拦**：带 cookie 手算 `sign` 直接 POST，返回 `RGV587_ERROR::SM`。
-   必须借页面里的 `window.lib.mtop.request`，它自带签名与安全头。
-2. **无头要「预热」**：无头上下文里直接调 `lib.mtop.request` 会被挂起，稳定返回
-   `TIMEOUT::接口超时`。先让页面自己导航到 `/search?q=…` 并发起一次搜索，之后再直调就正常；
-   同时上下文要用移动端 UA + `is_mobile`/`has_touch`，桌面 UA 的登录页会判「非法访问」。
+   可靠做法是页面驱动：导航 `/search?q=…`、拦截页面自己发出的请求；直调只作兜底。
+2. **无头要移动端仿真 + 页面驱动**：无头上下文要带移动端 UA、`is_mobile`/`has_touch`，
+   桌面 UA 的登录页会判「非法访问」。页面内直调在 2026-11-15 复测已失效
+   （请求缺少签名参数，稳定 `TIMEOUT::接口超时`），不要把它当主路径。
 3. **`type` 必须小写 `post`**：传 `POST` / `ORIGINALJSON` 会得到 `UNEXCEPT_REQUEST::错误的请求类型`。
 
 ## 7. 调用姿势

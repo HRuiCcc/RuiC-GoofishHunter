@@ -14,7 +14,7 @@
 flowchart LR
     A[调度器<br/>scheduler.py] --> B[流水线<br/>pipeline.py]
     B --> C[传输层<br/>goofish/session.py]
-    C -->|页面内 mtop| D[闲鱼 h5api]
+    C -->|页面驱动 / 拦截响应| D[闲鱼 h5api]
     C --> E[解析层<br/>goofish/parsers.py]
     E --> F[(SQLite<br/>items/snapshots)]
     F --> G[市场基准<br/>scoring/market.py]
